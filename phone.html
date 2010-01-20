@@ -1,0 +1,27 @@
+<html>
+<head></head>
+<body>
+<script type="text/javascript">
+
+var host = window.location.host;
+
+function command(text)
+{
+    parent.console.command(text);
+}
+    
+function respond(text)
+{
+    // Send the message using an img instead of XMLHttpRequest to avoid cross-domain security
+    var img = document.createElement("img");
+    img.style.visibility = "hidden";
+    document.body.appendChild(img);
+    img.onerror = function() { img.parentNode.removeChild(img); }
+
+    var message = escape(text);    
+    img.src = "http://" + host + "/response?message=" + message;    
+}
+
+parent.console.handshake(respond);
+
+</script>
