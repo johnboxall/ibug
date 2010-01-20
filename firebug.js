@@ -1,6 +1,4 @@
-
-(function()
-{
+(function() {
     var consoleFrame = null;
     var consoleBody = null;
     var commandLine = null;
@@ -60,7 +58,8 @@
         document.body.appendChild(iframe);
         iframe.style.display = "none";
         iframe.onload = setUp;
-        iframe.src = "/browser";
+        // @@@
+        iframe.src = "browser";
     }
 
     function focusCommandLine()
@@ -138,11 +137,7 @@
     
     // ********************************************************************************************
 
-    function logRow(message, className, handler)
-    {
-        // console.log(message, className, handler);
-    
-    
+    function logRow(message, className, handler) {
         var isScrolledToBottom =
             consoleBody.scrollTop + consoleBody.offsetHeight >= consoleBody.scrollHeight;
 
@@ -288,8 +283,9 @@
     }
 
     window.command = function(text) {
-        // TODO: This doesn't seem to work anymore.
-        var lines = text.split("\0");
+        // @@@ doesn't work.
+        // var lines = text.split("\0");
+        var lines = text.split("||");
         var className, html;
         
         // JOHN HACK

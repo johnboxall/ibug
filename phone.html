@@ -19,7 +19,7 @@ function respond(text)
     img.onerror = function() { img.parentNode.removeChild(img); }
 
     var message = escape(text);    
-    img.src = "http://" + host + "/response?message=" + message;    
+    img.src = "http://" + host + "/ibugx/response?message=" + message;    
 }
 
 parent.console.handshake(respond);

@@ -1,7 +1,11 @@
 if (!("console" in window) || !("firebug" in console)) {
 (function() {
+
+    // @@@ Save a reference to console for debugging.
+    window._console = window.console
+
     window.console = {
-        firebug: "ibug0.1",
+        firebug: "ibugx0.1",
         
         log: function() {
             logFormatted(arguments, "");
@@ -144,6 +148,8 @@ if (!("console" in window) || !("firebug" in console)) {
         handshake: function(callback) {
             sendMessage = callback;
             
+            // _console.log("HANDSHAKE:", queue);
+            
             for (var i = 0; i < queue.length; ++i)
                 sendMessage(queue[i]);
         }
@@ -161,7 +167,7 @@ if (!("console" in window) || !("firebug" in console)) {
     }
     
     function setUp() {
-        // need to reload the iframe after ever response. dumb :\
+        // need to reload the iframe after every response. dumb :\
         if (iframe) {
             iframe.parentNode.removeChild(iframe);
         }
@@ -171,14 +177,30 @@ if (!("console" in window) || !("firebug" in console)) {
         iframe.style.display = "none";
         iframe.onload = setUp;
         iframe.onerror = setUp;
-        iframe.src = "http://" + ibugHost + "/phone";
+        iframe.src = "http://" + ibugHost + "/ibugx/phone";
     }
     
-        
+    // The point of the iframe is to work cross domain.
+    // If we're on the same domain, we don't care.    
+    //function sendMessage(message) {
+    //    // Until we get a handshake from the iframe, queue messages for delivery
+    //    queue.push(message);
+    //}
+    var host = "m.com:1840";
+    
     function sendMessage(message) {
-        // Until we get a handshake from the iframe, queue messages for delivery
-        queue.push(message);
+        // Send the message using an img instead of XMLHttpRequest to avoid cross-domain security
+        var img = document.createElement("img");
+        img.style.visibility = "hidden";
+        document.body.appendChild(img);
+        img.onerror = function() { img.parentNode.removeChild(img); }
+    
+        var message = escape(message);    
+        img.src = "http://" + host + "/ibugx/response?message=" + message;    
     }
+
+    
+    
         
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
                
@@ -303,7 +325,9 @@ if (!("console" in window) || !("firebug" in console)) {
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
     function logRow(message, className, handler) {
-        sendMessage(className + "\0" + message.join(""));
+        // @@@ \0 doesn't work ???
+        // sendMessage(className + "\0" + message.join(""));
+        sendMessage(className + "||" + message.join(""));
     }
         
     function logFormatted(objects, className) {
@@ -312,11 +336,11 @@ if (!("console" in window) || !("firebug" in console)) {
         var format = objects[0];
         var objIndex = 0;
 
-        if (typeof(format) != "string") {
+        if (typeof format != "string") {
             format = "";
             objIndex = -1;
         }
-
+        
         var parts = parseFormat(format);
         for (var i = 0; i < parts.length; ++i) {
             var part = parts[i];
@@ -340,7 +364,7 @@ if (!("console" in window) || !("firebug" in console)) {
             }
         }
         
-        if (!className && html.length == 1 && typeof(objects[0]) == "string") {
+        if (!className && html.length == 1 && typeof objects[0] == "string") {
             className = "text";
         }
          
@@ -365,6 +389,9 @@ if (!("console" in window) || !("firebug" in console)) {
         }
 
         parts.push(format);
+
+        //_console.log(format);
+        //_console.log(parts);
 
         return parts;
     }
