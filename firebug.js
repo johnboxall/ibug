@@ -1,41 +1,30 @@
 (function() {
-    var consoleFrame = null;
-    var consoleBody = null;
-    var commandLine = null;
-
-    var commandHistory = [""];
-    var commandPointer = 0;
-    var commandInsertPointer = -1;
-    var commandHistoryMax = 1000;
-    
-    var frameVisible = false;
-    var messageQueue = [];
-    var groupStack = [];
-    var timeMap = {};
-    
-    var clPrefix = ">>> ";
-    
-    var isFirefox = navigator.userAgent.indexOf("Firefox") != -1;
-    var isIE = navigator.userAgent.indexOf("MSIE") != -1;
-    var isOpera = navigator.userAgent.indexOf("Opera") != -1;
-    var isSafari = navigator.userAgent.indexOf("AppleWebKit") != -1;
-
-    var greeting = 'Paste this into the head of any HTML pages you want to debug on your iPhone:';
-    var codeToPaste = '<script type="application/x-javascript" src="http://'
-        + ibugHost + '/ibug.js"></script>';
-    
-    // john
-    var iframe;
+    var consoleFrame,
+        consoleBody,
+        commandLine,
+        commandHistory = [""],
+        commandPointer = 0,
+        commandInsertPointer = -1,
+        commandHistoryMax = 1000,
+        frameVisible = false,
+        messageQueue = [],
+        groupStack = [],
+        timeMap = {},
+        clPrefix = ">>> ",
+        greeting = 'Paste this into the head of any HTML pages you want to debug:',
+        codeToPaste = '<script type="application/x-javascript" src="http://' + ibugHost + '/ibug.js"></script>',
+        // JOHN
+        iframe;
     
     // ********************************************************************************************
 
     function init() {
         consoleFrame = document.getElementById("inner");
         consoleBody = document.getElementById("log");
-
         commandLine = document.getElementById("commandLine");
+        
         addEvent(commandLine, "keydown", onCommandLineKeyDown);
-
+        
         layout();
         
         commandLine.focus();
@@ -49,7 +38,7 @@
     }
     
     function setUp() {
-        // need to reload the iframe after ever response. dumb :\
+        // JOHN: need to reload the iframe after ever response. dumb :|
         if (iframe) {
             iframe.parentNode.removeChild(iframe);
         }
@@ -58,64 +47,61 @@
         document.body.appendChild(iframe);
         iframe.style.display = "none";
         iframe.onload = setUp;
-        // @@@
         iframe.src = "browser";
     }
 
-    function focusCommandLine()
-    {
+    function focusCommandLine() {
         toggleConsole(true);
-        if (commandLine)
+        if (commandLine) {
             commandLine.focus();
+        }
     }
 
-    function evalCommandLine()
-    {
+    function evalCommandLine() {
         var text = commandLine.value;
         commandLine.value = "";
-
+        
         appendToHistory(text);
         logRow([clPrefix, text], "command");
         
         sendCommand(text);
     }
     
-    function sendCommand(text)
-    {
+    function sendCommand(text) {
         var message = escape(text).replace("+", "%2B")
         var request = new XMLHttpRequest();
         request.open("GET", "command?message=" + message, true);
         request.send(null);
     }
 
-    function appendToHistory(command, unique)
-    {
-        if (unique && commandHistory[commandInsertPointer] == command)
+    function appendToHistory(command, unique) {
+        if (unique && commandHistory[commandInsertPointer] == command) {
             return;
+        }
 
         ++commandInsertPointer;
-        if (commandInsertPointer >= commandHistoryMax)
+        if (commandInsertPointer >= commandHistoryMax) {
             commandInsertPointer = 0;
+        }
 
-        commandPointer = commandInsertPointer+1;
+        commandPointer = commandInsertPointer + 1;
         commandHistory[commandInsertPointer] = command;
     }
 
-    function cycleCommandHistory(dir)
-    {
+    function cycleCommandHistory(dir) {
         commandHistory[commandPointer] = commandLine.value;
 
-        if (dir < 0)
-        {
+        if (dir < 0) {
             --commandPointer;
-            if (commandPointer < 0)
+            if (commandPointer < 0) {
                 commandPointer = 0;
+            }
         }
-        else
-        {
+        else {
             ++commandPointer;
-            if (commandPointer > commandInsertPointer+1)
+            if (commandPointer > commandInsertPointer+1) {
                 commandPointer = commandInsertPointer+1;
+            }
         }
 
         var command = commandHistory[commandPointer];
@@ -124,8 +110,7 @@
         commandLine.setSelectionRange(command.length, command.length);
     }
     
-    function layout()
-    {
+    function layout() {
         var toolbar = consoleBody.ownerDocument.getElementById("toolbar");
         var height = consoleFrame.offsetHeight - (toolbar.offsetHeight + commandLine.offsetHeight);
         consoleBody.style.top = toolbar.offsetHeight + "px";
@@ -138,52 +123,49 @@
     // ********************************************************************************************
 
     function logRow(message, className, handler) {
-        var isScrolledToBottom =
-            consoleBody.scrollTop + consoleBody.offsetHeight >= consoleBody.scrollHeight;
+        var isScrolledToBottom = consoleBody.scrollTop + consoleBody.offsetHeight >= consoleBody.scrollHeight;
 
-        if (!handler)
+        if (!handler) {
             handler = writeRow;
+        }
         
         handler(message, className);
         
-        if (isScrolledToBottom)
+        if (isScrolledToBottom) {
             consoleBody.scrollTop = consoleBody.scrollHeight - consoleBody.offsetHeight;
+        }
     }
     
     function logFormatted(objects, className) {
-        var html = [];
+        var html = [],
+            format = objects[0],
+            objIndex = 0;
 
-        var format = objects[0];
-        var objIndex = 0;
-
-        if (typeof(format) != "string")
-        {
+        if (typeof(format) != "string") {
             format = "";
             objIndex = -1;
         }
 
         var parts = parseFormat(format);
-        for (var i = 0; i < parts.length; ++i)
-        {
+        for (var i = 0; i < parts.length; ++i) {
             var part = parts[i];
-            if (part && typeof(part) == "object")
-            {
+            if (part && typeof(part) == "object") {
                 var object = objects[++objIndex];
                 part.appender(object, html);
-            }
-            else
+            } else {
                 appendText(part, html);
+            }
         }
 
-        for (var i = objIndex+1; i < objects.length; ++i)
-        {
+        for (var i = objIndex+1; i < objects.length; ++i) {
             appendText(" ", html);
             
             var object = objects[i];
-            if (typeof(object) == "string")
+            if (typeof(object) == "string") {
                 appendText(object, html);
-            else
+            } else {
                 appendObject(object, html);
+            }
         }
         
         logRow(html, className);
@@ -202,22 +184,25 @@
         container.appendChild(row);
     }
 
-    function parseFormat(format)
-    {
+    function parseFormat(format) {
         var parts = [];
 
         var reg = /((^%|[^\\]%)(\d+)?(\.)([a-zA-Z]))|((^%|[^\\]%)([a-zA-Z]))/;    
-        var appenderMap = {s: appendText, d: appendInteger, i: appendInteger, f: appendFloat};
+        var appenderMap = {
+            s: appendText, 
+            d: appendInteger, 
+            i: appendInteger, 
+            f: appendFloat
+        };
 
-        for (var m = reg.exec(format); m; m = reg.exec(format))
-        {
+        for (var m = reg.exec(format); m; m = reg.exec(format)) {
             var type = m[8] ? m[8] : m[5];
-            var appender = type in appenderMap ? appenderMap[type] : appendObject;
-            var precision = m[3] ? parseInt(m[3]) : (m[4] == "." ? -1 : 0);
-
+                appender = type in appenderMap ? appenderMap[type] : appendObject;
+                precision = m[3] ? parseInt(m[3]) : (m[4] == "." ? -1 : 0);
+            
             parts.push(format.substr(0, m[0][0] == "%" ? m.index : m.index+1));
             parts.push({appender: appender, precision: precision});
-
+            
             format = format.substr(m.index+m[0].length);
         }
 
@@ -228,20 +213,20 @@
 
     // ********************************************************************************************
 
-    function addEvent(object, name, handler)
-    {
-        if (document.all)
+    function addEvent(object, name, handler) {
+        if (document.all) {
             object.attachEvent("on"+name, handler);
-        else
+        } else {
             object.addEventListener(name, handler, false);
+        }
     }
     
-    function removeEvent(object, name, handler)
-    {
-        if (document.all)
+    function removeEvent(object, name, handler) {
+        if (document.all) {
             object.detachEvent("on"+name, handler);
-        else
+        } else {
             object.removeEventListener(name, handler, false);
+        }
     }
     
     function cancelEvent(event) {
@@ -272,18 +257,19 @@
     }
         
     function onCommandLineKeyDown(event) {
-        if (event.keyCode == 13)
-            evalCommandLine();//evalCommandLine();
-        else if (event.keyCode == 27)
+        if (event.keyCode == 13) {
+            evalCommandLine();
+        } else if (event.keyCode == 27) {
             commandLine.value = "";
-        else if (event.keyCode == 38)
+        } else if (event.keyCode == 38) {
             cycleCommandHistory(-1);
-        else if (event.keyCode == 40)
+        } else if (event.keyCode == 40) {
             cycleCommandHistory(1);
+        }
     }
 
     window.command = function(text) {
-        // @@@ doesn't work.
+        // JOHN
         // var lines = text.split("\0");
         var lines = text.split("||");
         var className, html;

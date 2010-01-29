@@ -1,0 +1,30 @@
+ibug: Firebug for your (i)Phone
+
+Debug JavaScript on your mobile device from the comfort of your desktop browser.
+
+Originally developed by Joe Hewitt:
+http://www.joehewitt.com/blog/firebug_for_iph.php
+http://fbug.googlecode.com/svn/trunk/ibug/
+
+_This is rough around the edges._
+
+Tested running on Chrome OSX with a 3.0 iPhone 3GS.
+
+Setup
+=====
+
+* Download dependancies
+    - Python: http://www.python.org/download/
+    - Tornado: http://github.com/facebook/tornado
+
+* Server must run on port 80 with a hostname other than "localhost" - use 127.0.0.1 or fake out your /etc/hosts file.
+
+* Run the iBug server: `python ibug.py` - you'll need permission to run on 80!
+
+* Point a browser at http://your-host/firebug.html - this is your "console"
+
+* Point your iPhone (or simulator ;) at http://your-host/test.html
+
+* Type `document.body.style.background="red"` in your console window.
+
+* BAM.

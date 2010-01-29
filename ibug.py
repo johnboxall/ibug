@@ -1,208 +1,147 @@
-import webbrowser
 import socket
-from urlparse import urlparse
-from cgi import parse_qs
-from urllib import unquote
-import signal, thread, threading, time, sys
-import BaseHTTPServer, SocketServer, mimetypes
+import mimetypes
+import logging
+import os
 
-# **************************************************************************************************
-# Globals
+import tornado.httpserver
+import tornado.ioloop
+import tornado.web
 
-global done, server, consoleCommand, phoneResponse
+# Doesn't seem to work w/ localhost, so fake it with /etc/hosts
+HOST = "m.com"
 
-done = False
-server = None
-phoneResponseEvent = threading.Event()
-consoleEvent = threading.Event()
+# Port _MUST_ be 80 in this implementation.
+PORT = 80
 
-webPort = 1840
 
-# **************************************************************************************************
+# Utils ************************************************************************
 
-class WebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
-    pass
+def escape_js(s):
+    return s.replace("'", "\\'").replace("\n", "\\n").replace("\r", "")
     
-class WebRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-    def do_GET(self):
-        print "%s" % self.path
-
-        host, path, params, query = parseURL(self.path)
-        
-        if path == "/command":
-            postConsoleCommand(query.get("message"))
-            response = waitForPhoneResponse()
-            
-            self.respond(200, "application/x-javascript")
-            self << response
-            
-        elif path == "/response":
-            postPhoneResponse(query.get("message"))
-
-        elif path == "/browser":
-            self.respond(200, "text/html")
-            self.wfile.write(getFormattedFile("browser.html"))
-            self.wfile.flush()
-
-            while 1:
-#                print 'waitForPhoneResponse'
-                message = waitForPhoneResponse()
-#                print 'sending to phone ...'
-                msg = escapeJavaScript(message)
-                self.wfile.write("<p>%s</p><script>command('%s')</script>" % (msg, msg))
-                self.wfile.flush()
-
-        elif path == "/phone":
-            self.respond(200, "text/html")
-            self << getFormattedFile("phone.html")
-            self.wfile.flush()
-
-            while 1:
-#                print 'waitForConsoleCommand'
-                message = waitForConsoleCommand()
-                msg = escapeJavaScript(message)
-#                print 'sending to console. ...'
-                self.wfile.write("<p>%s</p><script>command('%s')</script>" % (msg, msg))
-                self.wfile.flush()
-
-        elif path in ["/ibug.js", "/firebug.js"]:
-            header = "var ibugHost = '%(hostName)s:%(port)s';" % getHostInfo()
-            self.sendFile(path[1:], header=header)
-
-        else:
-            if "favicon" in path:
-                self.respond(200, "text/html")
-                self << ""
-            else:
-                self.sendFile(path[1:])
-    
-    def respond(self, code=200, mimeType="text/plain"):
-        self.send_response(code)
-        self.send_header("Content-Type", mimeType)
-        self.end_headers()
-        #self << "HTTP/1.1 %s %s\n" % (code, "OK")
-        #self << "Content-Type: %s\n" % mimeType
-        #self << "\n"
-    
-    def sendFile(self, path, mimeType=None, header=None):
-        if not mimeType:
-            mimeType = mimetypes.guess_type(path)[0]
-            
-        self.respond(200, mimeType)
-        if header:
-            self << header
-        self << file(path).read()
-        
-    def __lshift__(self, text):
-        print text
-        try:
-            self.wfile.write(text)
-        except:
-            pass
-        
-# **************************************************************************************************
-
-def serve():    
-    signal.signal(signal.SIGINT, terminate)
-    thread.start_new_thread(runServer, ())
-    
-    global done
-    while not done:
-        try:
-            time.sleep(0.3)
-        except IOError:
-            pass
-   
-    global server
-    server.server_close()
-    
-def runServer():
-    print "Paste this code into the <head> of all HTML that will run on your iPhone:"
-    print getFormattedFile("embed.html", getHostInfo())
-
-    url = "http://%(hostName)s:%(port)s/firebug.html" % getHostInfo()
-    if "launch" in sys.argv:
-        print "Launching the console at:\n"
-        webbrowser.open(url)
-    else:
-        print "Load this page in your browser:\n"
-
-    print "    %s" % url
-    
-    print "\nFirebug server is running..."
-
-    global server
-    server = WebServer(("", webPort), WebRequestHandler)
-    server.allow_reuse_address = True
-    server.serve_forever()
-
-def terminate(sig_num, frame):
-    global done
-    done = True    
-
-# **************************************************************************************************
-
-def postConsoleCommand(message):
-    global consoleCommand
-    consoleCommand = message
-    consoleEvent.set()
-    
-def waitForConsoleCommand():
-    consoleEvent.wait()
-    consoleEvent.clear()
-
-    global consoleCommand
-    return consoleCommand
-
-def postPhoneResponse(message):
-    global phoneResponse
-    phoneResponse = message
-    phoneResponseEvent.set()
-    
-def waitForPhoneResponse():
-    phoneResponseEvent.wait()
-    phoneResponseEvent.clear()
-
-    global phoneResponse
-    return phoneResponse
-
-# **************************************************************************************************
-
-def parseURL(url):
-    """ Parses a URL into a tuple (host, path, args) where args is a dictionary."""
-    
-    scheme, host, path, params, query, hash = urlparse(url)
-    if not path: path = "/"
-
-    args = parse_qs(query)
-
-    escapedArgs = {}
-    for name in args:
-        if len(args[name]) == 1:
-            escapedArgs[unquote(name)] = unquote(args[name][0])
-        else:
-            escapedArgs[unquote(name)] = escapedSet = []
-            for item in args[name]:
-                escapedSet.append(unquote(item))
-
-    return host, path, params, escapedArgs
-
-def escapeJavaScript(text):
-    return text.replace("'", "\\'").replace("\n", "\\n").replace("\r", "")
-    
-def getFormattedFile(path, args={}):
-    return file(path).read() % args
-
-def getHostInfo():
+def get_host_info():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("getfirebug.com", 80))
-    hostName = s.getsockname()[0]
-    s.close()
-    
-    return {"hostName": "m.com", "port": "1840"}
-    ## return {"hostName": hostName, "port": webPort}
+    host = s.getsockname()[0]
+    s.close()    
+    # return {"host": host, "port": port}
+    return {"host": HOST, "port": PORT}
 
-# **************************************************************************************************
+
+# Utils ************************************************************************
+
+class MessageMixin(object):
+    """
+    Based on: 
+        http://github.com/facebook/tornado/blob/master/demos/chat/chatdemo.py
+    
+    """
+    phone_waiters = []
+    console_waiters = []
+    
+    def wait_for_phone_message(self, callback):
+        MessageMixin.phone_waiters.append(callback)
+        
+    def new_phone_message(self, message):
+        for callback in MessageMixin.phone_waiters:
+            callback(message)
+        MessageMixin.phone_waiters = []
+        
+    def wait_for_console_message(self, callback):
+        MessageMixin.console_waiters.append(callback)
+        
+    def new_console_message(self, message):
+        for callback in MessageMixin.console_waiters:
+            callback(message)
+        MessageMixin.console_waiters = []
+
+
+# Handlers *********************************************************************
+
+class CommandHandler(tornado.web.RequestHandler, MessageMixin):
+    @tornado.web.asynchronous
+    def get(self):
+        message = self.request.arguments.get("message")[0]
+        self.new_phone_message(message)
+        print 'waiting for console'
+        self.wait_for_console_message(self.async_callback(self.on_new_message))
+    
+    def on_new_message(self, message):
+        if self.request.connection.stream.closed():
+           return
+        self.set_header("Content-Type", "application/x-javascript")
+        self.finish(message)
+
+class BrowserHandler(tornado.web.RequestHandler, MessageMixin):
+    @tornado.web.asynchronous
+    def get(self):
+        self.write(file("browser.html").read())
+        self.wait_for_console_message(self.async_callback(self.on_new_message))
+    
+    def on_new_message(self, message):
+        if self.request.connection.stream.closed():
+           return
+        self.finish("<script>command('%s')</script>" % escape_js(message))
+
+class ResponseHandler(tornado.web.RequestHandler, MessageMixin):
+    def get(self):
+        message = self.request.arguments.get("message")[0]
+        self.new_console_message(message)
+        self.write('')
+
+
+class PhoneHandler(tornado.web.RequestHandler, MessageMixin):
+    @tornado.web.asynchronous
+    def get(self):
+        self.write(file("phone.html").read())
+        self.wait_for_phone_message(self.async_callback(self.on_new_message))
+    
+    def on_new_message(self, message):
+        if self.request.connection.stream.closed():
+           return
+        self.finish("<script>command('%s')</script>" % escape_js(message))
+
+
+class ScriptHandler(tornado.web.RequestHandler):
+    def get(self):
+        path = self.request.path.split("/")[-1]
+        mimetype = mimetypes.guess_type(path)[0]
+        self.set_header("Content-Type", mimetype)
+        # @@@ Always run off 80.
+        # self.write("var ibugHost = '%(host)s:%(port)s';" % get_host_info())
+        self.write("var ibugHost = '%(host)s';" % get_host_info())
+        self.write(file(path).read())
+
+
+class FileHandler(tornado.web.RequestHandler):
+    def get(self):
+        path = self.request.path.split("/")[-1]
+        mimetype = mimetypes.guess_type(path)[0]
+        self.set_header("Content-Type", mimetype)
+        
+        try:
+            self.write(file(path).read())
+        except:
+            self.write('')
+
+
+# Application ******************************************************************
+
+settings = {
+    "static_path": os.path.join(os.path.dirname(__file__), "static"),
+}
+
+application = tornado.web.Application([
+    (r"/command", CommandHandler),
+    (r"/response", ResponseHandler),
+    (r"/browser", BrowserHandler),
+    (r"/phone", PhoneHandler),
+    (r"/\w+\.js", ScriptHandler),
+    (r".*", FileHandler)
+])
+
 
 if __name__ == "__main__":
-    serve()
+    http_server = tornado.httpserver.HTTPServer(application)
+    http_server.listen(PORT)
+    tornado.ioloop.IOLoop.instance().start()

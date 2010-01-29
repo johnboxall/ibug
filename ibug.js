@@ -1,11 +1,11 @@
 if (!("console" in window) || !("firebug" in console)) {
 (function() {
 
-    // @@@ Save a reference to console for debugging.
+    // JOHN: Save a reference to the console for debugging ;)
     window._console = window.console
 
     window.console = {
-        firebug: "ibugx0.1",
+        firebug: "ibug0.1",
         
         log: function() {
             logFormatted(arguments, "");
@@ -39,9 +39,9 @@ if (!("console" in window) || !("firebug" in console)) {
         },
         
         dir: function(object) {
-            var html = [];
-                        
-            var pairs = [];
+            var html = [],
+                pairs = [];
+            
             for (var name in object) {
                 try {
                     pairs.push([name, object[name]]);
@@ -120,11 +120,10 @@ if (!("console" in window) || !("firebug" in console)) {
         // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
         
         onError: function(msg, href, lineNo) {
-            var html = [];
-        
-            var lastSlash = href.lastIndexOf("/");
-            var fileName = lastSlash == -1 ? href : href.substr(lastSlash+1);
-
+            var html = [],        
+                lastSlash = href.lastIndexOf("/"),
+                fileName = lastSlash == -1 ? href : href.substr(lastSlash+1);
+            
             html.push(
                 '<span class="errorMessage">', msg, '</span>', 
                 '<div class="objectBox-sourceLink">', fileName, ' (line ', lineNo, ')</div>'
@@ -157,11 +156,11 @@ if (!("console" in window) || !("firebug" in console)) {
  
     // ********************************************************************************************
      
-    var timeMap = {};
-    var queue = [];
-    var iframe;
+    var timeMap = {},
+        queue = [],
+        iframe;
     
-    // @@@ JOHN
+    // JOHN
     function init() {
         setUp();
     }
@@ -177,7 +176,7 @@ if (!("console" in window) || !("firebug" in console)) {
         iframe.style.display = "none";
         iframe.onload = setUp;
         iframe.onerror = setUp;
-        iframe.src = "http://" + ibugHost + "/ibugx/phone";
+        iframe.src = "http://" + ibugHost + "/phone";
     }
     
     // The point of the iframe is to work cross domain.
@@ -186,7 +185,7 @@ if (!("console" in window) || !("firebug" in console)) {
     //    // Until we get a handshake from the iframe, queue messages for delivery
     //    queue.push(message);
     //}
-    var host = "m.com:1840";
+    //var host = "m.com:1840";
     
     function sendMessage(message) {
         // Send the message using an img instead of XMLHttpRequest to avoid cross-domain security
@@ -196,7 +195,7 @@ if (!("console" in window) || !("firebug" in console)) {
         img.onerror = function() { img.parentNode.removeChild(img); }
     
         var message = escape(message);    
-        img.src = "http://" + host + "/ibugx/response?message=" + message;    
+        img.src = "/response?message=" + message;    
     }
 
     
@@ -234,10 +233,10 @@ if (!("console" in window) || !("firebug" in console)) {
 
     function appendArray(object, html) {
         html.push('<span class="arrayLeftBracket">[</span>');
-        for (var i = 0; i < object.length; ++i)
-        {
-            if (i > 0)
+        for (var i = 0; i < object.length; ++i) {
+            if (i > 0) {
                 html.push('<span class="arrayComma">,</span>');
+            }
             appendObject(object[i], html);
         }
         html.push('<span class="arrayRightBracket">]</span>');
@@ -245,34 +244,35 @@ if (!("console" in window) || !("firebug" in console)) {
     
     function appendObject(object, html) {
         try {
-            if (object == undefined)
+            if (object == undefined) {
                 appendNull("undefined", html);
-            else if (object == null)
+            } else if (object == null) {
                 appendNull("null", html);
-            else if (typeof object == "string")
+            } else if (typeof object == "string") {
                 appendString(object, html);
-            else if (typeof object == "number")
+            } else if (typeof object == "number") {
                 appendInteger(object, html);
-            else if (object.nodeType == 1)
+            } else if (object.nodeType == 1) {
                 appendSelector(object, html);
-            else if (object == window || object == document)
+            } else if (object == window || object == document) {
                 appendObjectFormatted(object, html);
-            else if (typeof(object.length) == "number")
+            } else if (typeof(object.length) == "number") {
                 appendArray(object, html);
-            else if (typeof object == "object")
+            } else if (typeof object == "object") {
                 appendObjectFormatted(object, html);
-            else if (typeof object == "function")
+            } else if (typeof object == "function") {
                 appendFunction(object, html);
-            else
+            } else {
                 appendText(object, html);
+            }
         } catch (exc) { }
     }
     
     function appendObjectFormatted(object, html) {
         var text = objectToString(object);
-        var reObject = /\[object (.*?)\]/;
+            reObject = /\[object (.*?)\]/,
+            m = reObject.exec(text);
 
-        var m = reObject.exec(text);
         html.push('<span class="objectBox-object">', m ? m[1] : text, '</span>')
     }
     
