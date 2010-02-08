@@ -1,8 +1,9 @@
+
 if (!("console" in window) || !("firebug" in console)) {
 (function() {
 
     // JOHN: Save a reference to the console for debugging ;)
-    window._console = window.console
+    window._console = window.console;
 
     window.console = {
         firebug: "ibug0.1",
@@ -187,7 +188,7 @@ if (!("console" in window) || !("firebug" in console)) {
         document.body.appendChild(img);
         img.onerror = function() {
             img.parentNode.removeChild(img);
-        }
+        };
     
         var message = escape(message);    
         img.src = "http://" + ibugHost + "/response?message=" + message;    
@@ -265,10 +266,10 @@ if (!("console" in window) || !("firebug" in console)) {
     
     function appendObjectFormatted(object, html) {
         var text = objectToString(object);
-            reObject = /\[object (.*?)\]/,
+            reObject = /\[object (.*?)\]/;
             m = reObject.exec(text);
 
-        html.push('<span class="objectBox-object">', m ? m[1] : text, '</span>')
+        html.push('<span class="objectBox-object">', m ? m[1] : text, '</span>');
     }
     
     function appendSelector(object, html) {
@@ -296,7 +297,7 @@ if (!("console" in window) || !("firebug" in console)) {
                 
                 html.push('&nbsp;<span class="nodeName">', attr.nodeName.toLowerCase(),
                     '</span>=&quot;<span class="nodeValue">', escapeHTML(attr.nodeValue),
-                    '</span>&quot;')
+                    '</span>&quot;');
             }
 
             if (node.firstChild) {
