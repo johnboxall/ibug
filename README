@@ -14,16 +14,15 @@ Setup
 =====
 
 * Download dependancies
-    - Python: http://www.python.org/download/
-    - Tornado: http://github.com/facebook/tornado
+    - Node.js: http://nodejs.org/#download
 
-* Server must run on port 80 with a hostname other than "localhost" - use 127.0.0.1 or fake out your /etc/hosts file.
+* Run the server: `node server`. You can specify host/port if you'd like: `node server example.com:80`.
 
-* Run the iBug server: `python ibug.py` - you'll need permission to run on 80!
+* Point a browser at the server http://127.0.0.1:8001/. This is your "console".
 
-* Point a browser at http://your-host/firebug.html - this is your "console"
+* Paste `<script type="application/x-javascript" src="http://127.0.0.1:8001/ibug.js"></script>` into the page you want to debug.
 
-* Point your iPhone (or simulator ;) at http://your-host/test.html
+* Open the page you want to debug in your browser. This is your "client".
 
 * Type `document.body.style.background="red"` in your console window.
 
