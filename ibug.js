@@ -142,60 +142,55 @@ if (!("console" in window) || !("firebug" in console)) {
                     console.onError(exc.message, exc.sourceId+"", exc.line);
                 }
             }
-        },
-
-        handshake: function(callback) {
-            sendMessage = callback;
-            
-            // _console.log("HANDSHAKE:", queue);
-            
-            for (var i = 0; i < queue.length; ++i)
-                sendMessage(queue[i]);
         }
     };
- 
+
+
     // ********************************************************************************************
      
     var timeMap = {},
         queue = [],
-        iframe;
+        scriptCount = 0,
+        iframe,
+        ibugHost;
     
     // JOHN
     function init() {
-        setUp();
-    }
-    
-    function setUp() {
-        // need to reload the iframe after every response. dumb :\
-        if (iframe) {
-            iframe.parentNode.removeChild(iframe);
+        // Figure out what the correct host is.
+        var scripts =  document.getElementsByTagName("script");
+        for (var i = 0; i < scripts.length; i++) {
+            var script = scripts[i];
+            if (/ibug\.js/.test(script.src)) {
+                ibugHost = script.src.split("/")[2];
+            }
         }
-
+    
         iframe = document.createElement("iframe");
         document.body.appendChild(iframe);
         iframe.style.display = "none";
-        iframe.onload = setUp;
-        iframe.onerror = setUp;
-        iframe.src = "http://" + ibugHost + "/phone";
+        listen();
     }
     
-    // The point of the iframe is to work cross domain.
-    // If we're on the same domain, we don't care.    
-    //function sendMessage(message) {
-    //    // Until we get a handshake from the iframe, queue messages for delivery
-    //    queue.push(message);
-    //}
-    //var host = "m.com:1840";
-    
-    function sendMessage(message) {
-        // Send the message using an img instead of XMLHttpRequest to avoid cross-domain security
+    // JOHN
+    function listen() {
+        var script = document.createElement("script");
+        script.src = "http://" + ibugHost + "/client?" + scriptCount++;
+        script.onload = listen;
+        // script.onerror = listen;
+        iframe.contentDocument.body.appendChild(script);        
+
+    }
+        
+    function sendMessage(message) {    
         var img = document.createElement("img");
         img.style.visibility = "hidden";
         document.body.appendChild(img);
-        img.onerror = function() { img.parentNode.removeChild(img); }
+        img.onerror = function() {
+            img.parentNode.removeChild(img);
+        }
     
         var message = escape(message);    
-        img.src = "/response?message=" + message;    
+        img.src = "http://" + ibugHost + "/response?message=" + message;    
     }
 
     
@@ -324,9 +319,9 @@ if (!("console" in window) || !("firebug" in console)) {
         
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
+    // JOHN TODO: Bring back the logic for doing multiple messages.
     function logRow(message, className, handler) {
-        // @@@ \0 doesn't work ???
-        // sendMessage(className + "\0" + message.join(""));
+    
         sendMessage(className + "||" + message.join(""));
     }
         
@@ -390,9 +385,6 @@ if (!("console" in window) || !("firebug" in console)) {
 
         parts.push(format);
 
-        //_console.log(format);
-        //_console.log(parts);
-
         return parts;
     }
 
@@ -426,4 +418,3 @@ if (!("console" in window) || !("firebug" in console)) {
     setTimeout(init, 0);
 })();
 }
-

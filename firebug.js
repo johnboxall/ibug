@@ -1,4 +1,5 @@
 (function() {
+    var ibugHost = document.location.host;
     var consoleFrame,
         consoleBody,
         commandLine,
@@ -14,7 +15,8 @@
         greeting = 'Paste this into the head of any HTML pages you want to debug:',
         codeToPaste = '<script type="application/x-javascript" src="http://' + ibugHost + '/ibug.js"></script>',
         // JOHN
-        iframe;
+        iframe,
+        scriptCount = 0;
     
     // ********************************************************************************************
 
@@ -33,22 +35,23 @@
         logRow([greeting], "info");
         logRow([escapeHTML(codeToPaste)], "text");
         
-        // JOHN
-        window.onload = setUp;
-    }
-    
-    function setUp() {
-        // JOHN: need to reload the iframe after ever response. dumb :|
-        if (iframe) {
-            iframe.parentNode.removeChild(iframe);
-        }
-
-        iframe = document.createElement("iframe");
+        // JOHN        
+        iframe = document.createElement("iframe")
+        iframe.style.border = "none";            
         document.body.appendChild(iframe);
-        iframe.style.display = "none";
-        iframe.onload = setUp;
-        iframe.src = "browser";
+        listen();
+        
     }
+
+    // JOHN:    
+    function listen() {
+        var script = document.createElement("script");
+        // Dont cache results.
+        script.src = "http://" + ibugHost + "/console?" + scriptCount++;
+        script.onload = listen;
+        iframe.contentDocument.body.appendChild(script);
+    }
+
 
     function focusCommandLine() {
         toggleConsole(true);
@@ -68,6 +71,18 @@
     }
     
     function sendCommand(text) {
+    
+    /*
+            var script = document.createElement("script");
+        script.src = "http://127.0.0.1:80001/client";
+        iframe.contentDocument.head.appendChild(script);        
+
+    
+    
+    */
+    
+    
+    
         var message = escape(text).replace("+", "%2B")
         var request = new XMLHttpRequest();
         request.open("GET", "command?message=" + message, true);
