@@ -36,7 +36,7 @@
         logRow([escapeHTML(codeToPaste)], "text");
         
         // JOHN        
-        iframe = document.createElement("iframe")
+        iframe = document.createElement("iframe");
         iframe.style.border = "none";            
         document.body.appendChild(iframe);
         listen();
@@ -83,7 +83,7 @@
     
     
     
-        var message = escape(text).replace("+", "%2B")
+        var message = escape(text).replace("+", "%2B");
         var request = new XMLHttpRequest();
         request.open("GET", "command?message=" + message, true);
         request.send(null);
@@ -130,9 +130,6 @@
         var height = consoleFrame.offsetHeight - (toolbar.offsetHeight + commandLine.offsetHeight);
         consoleBody.style.top = toolbar.offsetHeight + "px";
         consoleBody.style.height = height + "px";
-        
-        var commandLineBox = consoleBody.ownerDocument.getElementById("commandLineBox");
-        commandLineBox.style.top = (consoleFrame.offsetHeight - commandLine.offsetHeight) + "px";
     }
     
     // ********************************************************************************************
@@ -213,7 +210,7 @@
         for (var m = reg.exec(format); m; m = reg.exec(format)) {
             var type = m[8] ? m[8] : m[5];
                 appender = type in appenderMap ? appenderMap[type] : appendObject;
-                precision = m[3] ? parseInt(m[3]) : (m[4] == "." ? -1 : 0);
+                precision = m[3] ? parseInt(m[3], 10) : (m[4] == "." ? -1 : 0);
             
             parts.push(format.substr(0, m[0][0] == "%" ? m.index : m.index+1));
             parts.push({appender: appender, precision: precision});
@@ -291,17 +288,17 @@
         
         // JOHN HACK
         if (lines.length == 1) {
-            html = lines[0]
+            html = lines[0];
         } else {
             var className = lines[0];
             var html = lines[1];
         }
         logRow([html], className);
-    }
+    };
     
     window.clearConsole = function() {
         consoleBody.innerHTML = "";    
-    }
+    };
 
     init();
     
