@@ -1,5 +1,5 @@
 (function() {
-    var ibugHost = document.location.host;
+    var host = document.location.host;
     var consoleFrame,
         consoleBody,
         commandLine,
@@ -13,13 +13,13 @@
         timeMap = {},
         clPrefix = ">>> ",
         greeting = 'Paste this into the head of any HTML pages you want to debug:',
-        codeToPaste = '<script type="application/x-javascript" src="http://' + ibugHost + '/ibug.js"></script>',
+        codeToPaste = '<script type="application/x-javascript" src="http://' + host + '/ibug.js"></script>',
         // JOHN
         iframe,
         scriptCount = 0;
     
     // ********************************************************************************************
-
+    
     function init() {
         consoleFrame = document.getElementById("inner");
         consoleBody = document.getElementById("log");
@@ -35,24 +35,22 @@
         logRow([greeting], "info");
         logRow([escapeHTML(codeToPaste)], "text");
         
-        // JOHN        
+        // JOHN
         iframe = document.createElement("iframe");
-        iframe.style.border = "none";            
+        iframe.style.border = "none";       
         document.body.appendChild(iframe);
         listen();
-        
     }
 
     // JOHN:    
     function listen() {
         var script = document.createElement("script");
-        // Dont cache results.
-        script.src = "http://" + ibugHost + "/console?" + scriptCount++;
+        // Use scriptCount to avoid caching interfering with results.
+        script.src = "http://" + host + "/console?" + scriptCount++;
         script.onload = listen;
         iframe.contentDocument.body.appendChild(script);
     }
-
-
+    
     function focusCommandLine() {
         toggleConsole(true);
         if (commandLine) {
@@ -71,41 +69,31 @@
     }
     
     function sendCommand(text) {
-    
-    /*
-            var script = document.createElement("script");
-        script.src = "http://127.0.0.1:80001/client";
-        iframe.contentDocument.head.appendChild(script);        
-
-    
-    
-    */
-    
-    
-    
         var message = escape(text).replace("+", "%2B");
         var request = new XMLHttpRequest();
-        request.open("GET", "command?message=" + message, true);
+        // Hack: Hardcoded to a single message.
+        //       Command length is limited to the max uri of the browser.
+        request.open("GET", "command?n=1&l=1&b=0&m=" + message, true);
         request.send(null);
     }
-
+    
     function appendToHistory(command, unique) {
         if (unique && commandHistory[commandInsertPointer] == command) {
             return;
         }
-
+        
         ++commandInsertPointer;
         if (commandInsertPointer >= commandHistoryMax) {
             commandInsertPointer = 0;
         }
-
+        
         commandPointer = commandInsertPointer + 1;
         commandHistory[commandInsertPointer] = command;
     }
-
+    
     function cycleCommandHistory(dir) {
         commandHistory[commandPointer] = commandLine.value;
-
+        
         if (dir < 0) {
             --commandPointer;
             if (commandPointer < 0) {
@@ -118,9 +106,9 @@
                 commandPointer = commandInsertPointer+1;
             }
         }
-
+        
         var command = commandHistory[commandPointer];
-
+        
         commandLine.value = command;
         commandLine.setSelectionRange(command.length, command.length);
     }
@@ -133,10 +121,10 @@
     }
     
     // ********************************************************************************************
-
+    
     function logRow(message, className, handler) {
         var isScrolledToBottom = consoleBody.scrollTop + consoleBody.offsetHeight >= consoleBody.scrollHeight;
-
+        
         if (!handler) {
             handler = writeRow;
         }
@@ -152,7 +140,7 @@
         var html = [],
             format = objects[0],
             objIndex = 0;
-
+        
         if (typeof(format) != "string") {
             format = "";
             objIndex = -1;
@@ -281,7 +269,7 @@
     }
 
     window.command = function(text) {
-        // JOHN
+        // JOHN: I've had trouble with the \0 character.
         // var lines = text.split("\0");
         var lines = text.split("||");
         var className, html;
@@ -290,8 +278,8 @@
         if (lines.length == 1) {
             html = lines[0];
         } else {
-            var className = lines[0];
-            var html = lines[1];
+            className = lines[0];
+            html = lines[1];
         }
         logRow([html], className);
     };

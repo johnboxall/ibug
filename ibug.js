@@ -153,16 +153,15 @@ if (!("console" in window) || !("firebug" in console)) {
         queue = [],
         scriptCount = 0,
         iframe,
-        ibugHost;
+        host;
     
-    // JOHN
     function init() {
-        // Figure out what the correct host is.
+        // Hack: Figure out what the correct host is.
         var scripts =  document.getElementsByTagName("script");
         for (var i = 0; i < scripts.length; i++) {
             var script = scripts[i];
             if (/ibug\.js/.test(script.src)) {
-                ibugHost = script.src.split("/")[2];
+                host = script.src.split("/")[2];
             }
         }
     
@@ -171,31 +170,49 @@ if (!("console" in window) || !("firebug" in console)) {
         iframe.style.display = "none";
         listen();
     }
-    
-    // JOHN
-    function listen() {
-        var script = document.createElement("script");
-        script.src = "http://" + ibugHost + "/client?" + scriptCount++;
-        script.onload = listen;
-        // script.onerror = listen;
-        iframe.contentDocument.body.appendChild(script);        
-
-    }
         
-    function sendMessage(message) {    
-        var img = document.createElement("img");
-        img.style.visibility = "hidden";
-        document.body.appendChild(img);
-        img.onerror = function() {
-            img.parentNode.removeChild(img);
-        };
-    
-        var message = escape(message);    
-        img.src = "http://" + ibugHost + "/response?message=" + message;    
-    }
+    function listen() {
+        // what is the point of putting this in an iframe???
+        var script = document.createElement("script");
+        script.src = "http://" + host + "/client?" + scriptCount++;
+        script.onload = listen;
 
+        // script.onerror = listen;
+
+        // TODO: Throws on the Pre - what's going wrong?
+        try {
+            iframe.contentDocument.body.appendChild(script);        
+        } catch (err) {
+            window.document.body.appendChild(script);
+        }
+
+    }
     
+    // TODO: Cleanup!
+    var MAX_BIT_LENGTH = 1500;
+    var messageNumber = 0;
     
+    function sendMessage(message) {
+        // Messages are broken into bits to avoid browser uri length limits.
+        // n = message number 
+        // l = number of bits in this message 
+        // b = current bit
+        // m = bit message
+        var message = escape(message);        
+        var bitLength = Math.ceil(message.length / MAX_BIT_LENGTH);
+        var bitNumber = 0;
+        
+        for (var i = 0, step = MAX_BIT_LENGTH; i < message.length; i = i + step) {
+            var src = "http://" + host + "/response?"
+            src += "n=" + messageNumber;
+            src += "&l=" + bitLength;
+            src += "&b=" + bitNumber++;
+            src += "&m=" + message.substring(i, i + step);
+            new Image().src = src;
+        }
+        
+        messageNumber++;
+    }
         
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
                
@@ -320,9 +337,7 @@ if (!("console" in window) || !("firebug" in console)) {
         
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
-    // JOHN TODO: Bring back the logic for doing multiple messages.
-    function logRow(message, className, handler) {
-    
+    function logRow(message, className, handler) {    
         sendMessage(className + "||" + message.join(""));
     }
         

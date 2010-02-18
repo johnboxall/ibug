@@ -14,30 +14,45 @@ if (process.ARGV.length > 2) {
     PORT = _url.port;    
 }
 
-sys.puts(HOST + PORT);
-
-
 var escapeJS = function (s) {
     return s.replace(/'/g, "\\'").replace(/\n/g, "\\n").replace(/\r/g, "")
 }
 
-
 var channel = new function () {
-  var client =  { message: null
+  var client =  { queue: {}
                 , callback: null };
-  var console = { message: null
+  var console = { queue: {}
                 , callback: null };
   
   this.getQueue = function (queueName) {
     return (queueName == "client" && client) || console;
   }
   
-  this.talk = function (queueName, message) {
+  // Message are broken into bits, so queue them until we recieve all the bits.
+  this.queue = function (queueName, encodedBit, messageNumber, bitLength, bitNumber) {
     var queue = this.getQueue(queueName);
-    if (queue.callback) {
-        var callback = queue.callback;
-        queue.callback = null;
-        callback(message);
+    
+    // [bit1, bit2, bit3, ..., bitx, number_of_bits_recieved]
+    if (!queue[messageNumber]) {
+      queue[messageNumber] = [];
+      queue[messageNumber][bitLength] = 1;
+    } else {
+        queue[messageNumber][bitLength]++;
+    }
+    
+    queue[messageNumber][bitNumber] = encodedBit
+        
+    // If all bits in a message are here, send it.
+    if (queue[messageNumber][bitLength] == bitLength && queue.callback) {
+      var callback = queue.callback;
+      queue.callback = null;
+      
+      // Don't send # of bits recieved.
+      queue[messageNumber].pop();
+      var message = decodeURIComponent(queue[messageNumber].join(""));
+      delete queue[messageNumber];
+    
+      callback(message);
     }
   };
   
@@ -54,24 +69,40 @@ fu.get("/firebug.css", fu.staticHandler("firebug.css"));
 fu.get("/firebug.js", fu.staticHandler("firebug.js"));
 fu.get("/ibug.js", fu.staticHandler("ibug.js"));
 
+// TODO: DRY us up!
+
 fu.get("/response", function (req, res) {
-  channel.talk("console", qs.parse(url.parse(req.url).query).message);
+  // HACK: The message has been split, so don't decode it until it's all here.
+  var m = req.url.match(/\?n=(.*?)&l=(.*?)&b=(.*?)&m=(.*)/);
+  var messageNumber = m[1];
+  var bitLength = m[2]
+  var bitNumber = m[3];
+  var encodedBit = m[4];
+    
+  channel.queue("console", encodedBit, messageNumber, bitLength, bitNumber);
+  res.simpleJSON(200, {});
+});
+
+fu.get("/command", function (req, res) {
+  // HACK: The message has been split, so don't decode it until it's all here.
+  var m = req.url.match(/\?n=(.*?)&l=(.*?)&b=(.*?)&m=(.*)/);
+  var messageNumber = m[1];
+  var bitLength = m[2]
+  var bitNumber = m[3];
+  var encodedBit = m[4];
+    
+  channel.queue("client", encodedBit, messageNumber, bitLength, bitNumber);
   res.simpleJSON(200, {});
 });
 
 fu.get("/client", function (req, res) {
-  channel.listen("client", function (messages) {
-    res.simpleScript(200, "parent.console.command('" + escapeJS(messages) + "');");
+  channel.listen("client", function (message) {
+    res.simpleScript(200, "parent.console.command('" + escapeJS(message) + "');");
   });
 });
 
-fu.get("/command", function (req, res) {
-  channel.talk("client", qs.parse(url.parse(req.url).query).message);
-  res.simpleJSON(200, {});
-});
-
 fu.get("/console", function (req, res) {
-  channel.listen("console", function (messages) {
-    res.simpleScript(200, "parent.command('" + escapeJS(messages) + "');");
+  channel.listen("console", function (message) {
+    res.simpleScript(200, "parent.command('" + escapeJS(message) + "');");
   });
 });
