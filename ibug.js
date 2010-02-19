@@ -170,22 +170,53 @@ if (!("console" in window) || !("firebug" in console)) {
         iframe.style.display = "none";
         listen();
     }
-        
-    function listen() {
-        // what is the point of putting this in an iframe???
+    
+    
+    // Need to track what script we're on in some implementations.
+    window.console.lastScriptLoaded = -1;
+    
+    function onload(script, callback) {
+        // For browsers that don't support script.onload (symbian webkit), use
+        // polling to detect when the script has loaded.
+        // http://perfectionkills.com/detecting-event-support-without-browser-sniffing/
+        // http://remysharp.com/2007/04/12/how-to-detect-when-an-external-library-has-loaded/
+        script.setAttribute("onload", "return");
+        if (typeof script.onload == "function") {
+            var loaded = false;        
+            script.onload = script.onreadystatechange = function(){
+                var state = this.readyState;
+                if (!loaded && (!state || state == 'loaded' || state == 'complete')) {
+                    loaded = true;
+                    callback();
+                }
+            }
+        } else {
+            // Check the response loaded count.
+            var callbackTimer = setInterval(function() {
+                if (window.console.lastScriptLoaded == scriptCount - 1) {
+                    clearInterval(callbackTimer);
+                    callback();
+                }
+            }, 100);
+        }
+    }
+    
+    function listen(){
         var script = document.createElement("script");
-        script.src = "http://" + host + "/client?" + scriptCount++;
-        script.onload = listen;
+        script.src = "http://" + host + "/client?s=" + scriptCount++;
+        
+        onload(script, listen);
 
+        // TODO: What about onerror?        
         // script.onerror = listen;
 
         // TODO: Throws on the Pre - what's going wrong?
+        // TODO: Is there a point to putting the script in an iframe?
         try {
             iframe.contentDocument.body.appendChild(script);        
         } catch (err) {
             window.document.body.appendChild(script);
         }
-
     }
     
     // TODO: Cleanup!

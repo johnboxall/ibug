@@ -9,6 +9,10 @@ var HOST = undefined; // localhost
 var PORT = 8001;
 
 if (process.ARGV.length > 2) {
+    var _url;
+    // if its just an init then port#
+    //if (process.ARGV[2].parseInt())
+
     var _url = url.parse("http://" + process.ARGV[2]);
     HOST = _url.hostname;
     PORT = _url.port;    
@@ -44,12 +48,19 @@ var channel = new function () {
         
     // If all bits in a message are here, send it.
     if (queue[messageNumber][bitLength] == bitLength && queue.callback) {
+      var message;
       var callback = queue.callback;
       queue.callback = null;
       
       // Don't send # of bits recieved.
       queue[messageNumber].pop();
-      var message = decodeURIComponent(queue[messageNumber].join(""));
+      
+      message = queue[messageNumber].join("");
+      
+      try {
+        message = decodeURIComponent(message);
+      } catch (err) {};
+      
       delete queue[messageNumber];
     
       callback(message);
@@ -97,7 +108,8 @@ fu.get("/command", function (req, res) {
 
 fu.get("/client", function (req, res) {
   channel.listen("client", function (message) {
-    res.simpleScript(200, "parent.console.command('" + escapeJS(message) + "');");
+    var s = qs.parse(url.parse(req.url).query).s;
+    res.simpleScript(200, "parent.console.command('" + escapeJS(message) + "'); parent.console.lastScriptLoaded = " + s + ";");
   });
 });
 
