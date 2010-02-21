@@ -170,37 +170,39 @@ if (!("console" in window) || !("firebug" in console)) {
         iframe.style.display = "none";
         listen();
     }
-    
-    
-    // Need to track what script we're on in some implementations.
-    window.console.lastScriptLoaded = -1;
-    
-    function onload(script, callback) {
-        // For browsers that don't support script.onload (symbian webkit), use
-        // polling to detect when the script has loaded.
+        
+    var onload = (function(){
+        // Detect whether script.onload is supported.
         // http://perfectionkills.com/detecting-event-support-without-browser-sniffing/
-        // http://remysharp.com/2007/04/12/how-to-detect-when-an-external-library-has-loaded/
-        script.setAttribute("onload", "return");
-        if (typeof script.onload == "function") {
-            var loaded = false;        
-            script.onload = script.onreadystatechange = function(){
-                var state = this.readyState;
-                if (!loaded && (!state || state == 'loaded' || state == 'complete')) {
-                    loaded = true;
-                    callback();
+        var testScript = document.createElement("script");
+        testScript.setAttribute("onload", "return");
+        if (typeof testScript.onload == "function") {
+            return function(script, callback) {
+                var loaded = false;        
+                script.onload = script.onreadystatechange = function(){
+                    var state = this.readyState;
+                    if (!loaded && (!state || state == 'loaded' || state == 'complete')) {
+                        loaded = true;
+                        callback();
+                    }
                 }
             }
         } else {
-            // Check the response loaded count.
-            var callbackTimer = setInterval(function() {
-                if (window.console.lastScriptLoaded == scriptCount - 1) {
-                    clearInterval(callbackTimer);
-                    callback();
-                }
-            }, 100);
+            // If script.onload is not supported use polling with a counter 
+            // to detect whether the script is loaded.
+            // http://remysharp.com/2007/04/12/how-to-detect-when-an-external-library-has-loaded/
+            window.console.lastScriptLoaded = -1;        
+            return function(script, callback) {
+                var callbackTimer = setInterval(function(){
+                    if (window.console.lastScriptLoaded == scriptCount - 1){
+                        clearInterval(callbackTimer);
+                        callback();
+                    }
+                }, 100);
+            }
         }
-    }
-    
+    })();
+        
     function listen(){
         var script = document.createElement("script");
         script.src = "http://" + host + "/client?s=" + scriptCount++;
@@ -209,7 +211,6 @@ if (!("console" in window) || !("firebug" in console)) {
 
         // TODO: What about onerror?        
         // script.onerror = listen;
-
         // TODO: Throws on the Pre - what's going wrong?
         // TODO: Is there a point to putting the script in an iframe?
         try {
